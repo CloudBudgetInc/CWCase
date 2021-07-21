@@ -1,0 +1,209 @@
+<aura:component description="Accounts Interface"
+                implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes"
+                controller="AccountPageController"
+                access="global">
+
+    <ltng:require
+            scripts="{!join(',', $Resource.jquery341, $Resource.JS_UTILS)}"
+            afterScriptsLoaded="{!c.doInit}"/>
+    <aura:attribute name="recordId" type="String" access="global" description=""/>
+
+    <aura:attribute name="accounts" type="List" access="global" description="An account list"/>
+    <aura:attribute name="account" type="Object" access="global" description="Single account for editing"/>
+    <aura:attribute name="columns" type="List" access="global" description="The main table columns"/>
+    <aura:attribute name="pageNumber" type="Integer" access="global" default="0"/>
+    <!-- FILTERS -->
+    <aura:attribute name="offset" type="Object" access="global"/>
+    <aura:attribute name="numberOfRecords" type="Object" access="global"/>
+    <aura:attribute name="textFilter" type="String" access="global"/>
+    <!-- FILTERS -->
+
+
+    <lightning:card variant="Narrow">
+
+        <lightning:layout>
+            <lightning:layoutItem size="3">
+                <lightning:layout class="slds-p-left_small">
+                    <lightning:layoutItem size="1">
+                        <lightning:icon iconName="utility:connected_apps" size="small"/>
+                    </lightning:layoutItem>
+                    <lightning:layoutItem size="10">
+                        <h1 style="font-weight: bold; font-size: large; ">Custom Account List</h1>
+                    </lightning:layoutItem>
+                </lightning:layout>
+            </lightning:layoutItem>
+            <lightning:layoutItem size="5">
+            </lightning:layoutItem>
+            <lightning:layoutItem size="2">
+                <lightning:buttonGroup class="slds-p-top_large">
+                    <lightning:button label="Previous" onclick="{!c.goToPreviousPage}"/>
+                    <lightning:button label="Next" onclick="{!c.goToNextPage}"/>
+                </lightning:buttonGroup>
+                <span> Page: {!v.pageNumber + 1} </span>
+            </lightning:layoutItem>
+            <lightning:layoutItem size="2" class="slds-p-right_small slds-p-bottom_small">
+                <lightning:layout>
+                    <lightning:layoutItem size="4">
+                        <lightning:input label="Limit" value="{!v.numberOfRecords}" type="number" step="0"
+                                         onchange="{!c.refreshMainTable}"/>
+                    </lightning:layoutItem>
+                    <!--<lightning:layoutItem size="4">
+                        <lightning:input label="Offset" value="{!v.offset}" type="number" step="0"
+                                         onchange="{!c.refreshMainTable}"/>
+                    </lightning:layoutItem>-->
+                    <lightning:layoutItem size="4">
+                        <div style="padding-top: 24px;" onkeyup="{!c.handleKeyUp}">
+                            <lightning:input label="Filter" value="{!v.textFilter}" variant="label-hidden" type="search"
+                                             isLoading="{!v.isSearching}"
+                                             maxlength="80"/>
+                        </div>
+                    </lightning:layoutItem>
+                </lightning:layout>
+            </lightning:layoutItem>
+        </lightning:layout>
+
+
+        <div style="height: 700px">
+            <lightning:datatable
+                    columns="{!v.columns}"
+                    data="{!v.accounts}"
+                    keyField="Id"
+                    onrowaction="{!c.handleRowAction}"
+                    showRowNumberColumn="true"
+                    hideCheckboxColumn="true"
+            />
+        </div>
+    </lightning:card>
+
+
+    <!-- DIALOG WINDOW -->
+    <div class="slds-hide" aura:id="accountDialog">
+
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large"
+                 aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 id="modal-heading-01" class="slds-modal__title slds-hyphenate">
+                         {!'Account: "' + v.account.Name + '"'  + ' (' + v.account.ExtId__c + ')'}</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+
+                    <lightning:tabset selectedTabId="info" aura:id="editDialogTabs">
+                        <lightning:tab label="General" id="info">
+
+                            <div class="slds-card__body slds-card__body_inner">
+                                <div>
+                                    <lightning:layout>
+
+                                        <lightning:layoutItem padding="around-small" size="2">
+                                            <lightning:input label="Name"
+                                                             value="{!v.account.Name}"
+                                                             type="text"
+                                                             disabled="true"/>
+                                        </lightning:layoutItem>
+
+                                        <lightning:layoutItem padding="around-small" size="2">
+                                            <lightning:input label="Priority" value="{!v.account.Priority__c}"
+                                                             type="text"
+                                                             disabled="true"/>
+                                        </lightning:layoutItem>
+
+                                        <lightning:layoutItem padding="around-small" size="2">
+                                            <lightning:input label="Annual Revenue" value="{!v.account.AnnualRevenue}"
+                                                             type="number" formatter="currency" step="0.00"
+                                                             disabled="true"/>
+                                        </lightning:layoutItem>
+
+                                        <lightning:layoutItem padding="around-small" size="2">
+                                            <lightning:input label="Number of Employees"
+                                                             value="{!v.account.NumberOfEmployees}" type="number"
+                                                             step="0"
+                                                             disabled="true"/>
+                                        </lightning:layoutItem>
+
+                                        <lightning:layoutItem padding="around-small" size="2">
+                                            <lightning:input label="Owner" value="{!v.account.Owner.Name}" type="text"
+                                                             disabled="true"/>
+                                        </lightning:layoutItem>
+
+                                        <lightning:layoutItem padding="around-small" class="slds-list_horizontal"
+                                                              size="2">
+                                            <lightning:input label="Description" value="{!v.account.Description}"
+                                                             type="text"
+                                                             disabled="true"/>
+                                        </lightning:layoutItem>
+
+                                    </lightning:layout>
+
+
+                                </div>
+                            </div>
+
+                        </lightning:tab>
+
+                        <lightning:tab label="Contacts" id="contacts">
+                            <!-- CONTACTS -->
+                            <table class="slds-table slds-table_cell-buffer slds-p-left_small slds-table_bordered slds-table_col-bordered accountList">
+                                <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th>
+                                        <div>#</div>
+                                    </th>
+                                    <th>
+                                        First Name
+                                    </th>
+                                    <th>
+                                        Last Name
+                                    </th>
+                                    <th>
+                                        Email
+                                    </th>
+                                </tr>
+
+
+                                </thead>
+                                <tbody>
+                                <aura:iteration items="{!v.account.Contacts}" var="contact"
+                                                indexVar="i">
+                                    <tr class="slds-line-height_reset">
+                                        <td>
+                                            <div class="slds-truncate">{!i + 1}</div>
+                                        </td>
+                                        <td>
+                                            <div class="slds-truncate">{!contact.FirstName}</div>
+                                        </td>
+                                        <td>
+                                            <div class="slds-truncate">{!contact.LastName}</div>
+                                        </td>
+                                        <td>
+                                            <div class="slds-truncate">{!contact.Email}</div>
+                                        </td>
+                                    </tr>
+                                </aura:iteration>
+                                </tbody>
+                            </table>
+                            <!-- CONTACTS -->
+                        </lightning:tab>
+
+                    </lightning:tabset>
+
+                </div>
+                <footer class="slds-modal__footer">
+                    <button class="slds-button slds-button_neutral" onclick="{!c.closeAccountDialog}">Close
+                    </button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+
+
+    </div>
+    <!-- DIALOG WINDOW -->
+
+
+    <!-- SPINNER -->
+    <lightning:spinner aura:id="sms" class="slds-hide"/>
+    <!-- SPINNER -->
+
+
+</aura:component>
